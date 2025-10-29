@@ -1,3 +1,6 @@
+// Made by egor 29 10 2025
+//
+//
 #ifndef FIGURES_H
 #define FIGURES_H
 

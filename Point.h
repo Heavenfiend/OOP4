@@ -1,3 +1,6 @@
+// Made by egor 29 10 2025
+//
+//
 #ifndef POINT_H
 #define POINT_H
 

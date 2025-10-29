@@ -1,3 +1,6 @@
+// Made by egor 29 10 2025
+//
+//
 #include <iostream>
 #include <memory>
 #include "Array.h"
