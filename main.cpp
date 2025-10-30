@@ -1,12 +1,13 @@
-// Made by egor 29 10 2025
+// Made by Egor
 //
 //
 #include <iostream>
 #include <memory>
+#include <cstdlib>
 #include "Array.h"
 #include "Figures.h"
-// очистка буфера ввода
 
+// очистка буфера ввода
 void clearInput() {
     std::cin.clear();
     std::cin.ignore(10000, '\n');
@@ -41,8 +42,103 @@ void addFigure(Array<std::shared_ptr<Figure<double>>>& figures) {
     }
 }
 
+// демонстрация move между массивами из основного массива
+void demonstrateMoveFromMainArray(Array<std::shared_ptr<Figure<double>>>& mainArray) {
+    std::cout << "\n=== демонстрация move из основного массива ===\n";
+
+    if(mainArray.size() == 0) {
+        std::cout << "основной массив пуст! сначала создайте фигуры.\n";
+        return;
+    }
+
+    std::cout << "в основном массиве " << mainArray.size() << " фигур\n";
+    std::cout << "сколько фигур переместить? (1-" << mainArray.size() << "): ";
+    int count;
+    std::cin >> count;
+
+    if(count <= 0 || count > mainArray.size()) {
+        std::cout << "неверное количество!\n";
+        return;
+    }
+
+    // создаем большой массив (емкость = count + 2)
+    int largeCapacity = count + 2;
+    Array<std::shared_ptr<Figure<double>>> largeArray(largeCapacity);
+    std::cout << "создан массив largeArray с емкостью: " << largeArray.capacity() << "\n";
+
+    // перемещаем элементы из основного массива в большой
+    std::cout << "перемещаем " << count << " элементов из основного массива в largeArray:\n";
+    for(int i = 0; i < count; ++i) {
+        std::cout << "move элемент [" << i << "]: ";
+        mainArray[i]->print(std::cout);
+        std::cout << "\n";
+        largeArray.push_back(std::move(mainArray[i]));  // перемещаем из основного массива
+    }
+
+    // проверка основного массива после move
+    std::cout << "проверка основного массива после move:\n";
+    std::cout << "основной массив размер: " << mainArray.size() << "\n";
+    for(size_t i = 0; i < mainArray.size(); ++i) {
+        if(mainArray.is_moved(i)) {
+            std::cout << "[" << i << "]: nullptr (элемент перемещен)\n";
+        } else {
+            std::cout << "[" << i << "]: " << *mainArray[i] << "\n";
+        }
+    }
+
+    std::cout << "результат:\n";
+    std::cout << "largeArray: размер " << largeArray.size() << ", емкость " << largeArray.capacity() << "\n";
+    for(size_t i = 0; i < largeArray.size(); ++i) {
+        std::cout << "[" << i << "]: " << *largeArray[i] << "\n";
+    }
+
+    // удаляем перемещенные элементы из основного массива
+    for(int i = 0; i < count; ++i) {
+        mainArray.remove(0);  // удаляем первый элемент (после move он nullptr)
+    }
+
+    std::cout << "после очистки основной массив: размер " << mainArray.size() << "\n";
+    std::cout << "демонстрация завершена!\n\n";
+}
+
+void demonstrateArrayWithRawPointersAndDerived() {
+    std::cout << "\n=== Демонстрация Array с Figure<double>* и Rhombus<double> ===\n";
+
+    std::cout << "\n1. Работа с Array<Figure<double>*> (указатели на базовый класс):\n";
+    Array<Figure<double>*> figure_ptrs(4);
+
+    auto* rhombus_ptr = new Rhombus<double>(Point<double>(0, 0), 5.0);
+    auto* pentagon_ptr = new Pentagon<double>(Point<double>(1, 1), 3.0);
+
+    figure_ptrs.push_back(rhombus_ptr);
+    figure_ptrs.push_back(pentagon_ptr);
+
+    std::cout << "Размер массива указателей: " << figure_ptrs.size() << "\n";
+    for (size_t i = 0; i < figure_ptrs.size(); ++i) {
+        std::cout << "[" << i << "]: " << *figure_ptrs[i] << "\n";
+    }
+
+    std::cout << "\n2. Работа с Array<Rhombus<double>> (массив объектов наследника):\n";
+    Array<Rhombus<double>> rhombus_array(3); // Массив объектов ромбов
+
+    rhombus_array.push_back(Rhombus<double>(Point<double>(2, 2), 4.0));
+    rhombus_array.push_back(Rhombus<double>(Point<double>(3, 3), 6.0));
+
+    std::cout << "Размер массива ромбов: " << rhombus_array.size() << "\n";
+    for (size_t i = 0; i < rhombus_array.size(); ++i) {
+        std::cout << "[" << i << "]: " << rhombus_array[i] << "\n";
+    }
+
+    for (size_t i = 0; i < figure_ptrs.size(); ++i) {
+        delete figure_ptrs[i];
+    }
+
+    std::cout << "\nКонец.\n";
+}
+
 int main() {
     system("chcp 65001");
+
     Array<std::shared_ptr<Figure<double>>> figures;
 
     std::cout << "сколько фигур создать изначально? ";
@@ -84,6 +180,8 @@ int main() {
         std::cout << "2. вычислить общую площадь\n";
         std::cout << "3. удалить фигуру по индексу\n";
         std::cout << "4. добавить новую фигуру\n";
+        std::cout << "5. демонстрация move между массивами\n";
+        std::cout << "6. демонстрация Array с Figure<double>* и Rhombus<double>\n";
         std::cout << "0. выход\n";
         std::cout << "выбор: ";
         std::cin >> choice;
@@ -133,6 +231,13 @@ int main() {
                 addFigure(figures);
                 break;
 
+            case 5:
+                demonstrateMoveFromMainArray(figures);
+                break;
+            case 6:
+                demonstrateArrayWithRawPointersAndDerived();
+                break;
+
             case 0:
                 std::cout << "выход из программы. пока!\n";
                 break;
@@ -142,28 +247,5 @@ int main() {
                 break;
         }
     } while(choice != 0);
-
-    // демонстрация работы с разными массивами
-    std::cout << "\n--- тестирование array с разными типами ---\n";
-
-    Array<std::shared_ptr<Figure<double>>> figure_ptrs;
-    figure_ptrs.push_back(std::make_shared<Rhombus<double>>(Point<double>(0,0), 5));
-    figure_ptrs.push_back(std::make_shared<Pentagon<double>>(Point<double>(1,1), 3));
-
-    std::cout << "array<std::shared_ptr<figure<double>>> содержимое:\n";
-    for(size_t i = 0; i < figure_ptrs.size(); ++i) {
-        std::cout << "[" << i << "]: " << *figure_ptrs[i] << std::endl;
-    }
-
-    Array<std::shared_ptr<Rhombus<double>>> rhombus_array;
-    rhombus_array.push_back(std::make_shared<Rhombus<double>>(Point<double>(2,2), 4));
-    rhombus_array.push_back(std::make_shared<Rhombus<double>>(Point<double>(3,3), 2));
-
-    std::cout << "\narray<std::shared_ptr<rhombus<double>>> содержимое:\n";
-    for(size_t i = 0; i < rhombus_array.size(); ++i) {
-        std::cout << "[" << i << "]: " << *rhombus_array[i] << std::endl;
-    }
-
-    std::cout << "программа завершена успешно!" << std::endl;
     return 0;
 }

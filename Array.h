@@ -1,90 +1,108 @@
-// Made by egor 29 10 2025
-//
-//
 #ifndef ARRAY_H
 #define ARRAY_H
 
 #include <memory>
 #include <stdexcept>
 #include <utility>
+#include <iostream>
 
 // шаблонный динамический массив
 template<typename T>
 class Array {
 private:
-    std::shared_ptr<T[]> data;  // сам массив
-    size_t size_ = 0;           // текущий размер
-    size_t capacity_ = 0;       // вместимость
+    std::shared_ptr<T[]> data;
+    size_t size_ = 0;
+    size_t capacity_ = 0;
 
-    // увеличиваем размер массива
     void resize(size_t new_capacity) {
         if (new_capacity <= capacity_) return;
 
-        // создаем новый массив побольше
-        auto new_data = std::shared_ptr<T[]>(new T[new_capacity]);
+        std::cout << "--- resize: " << capacity_ << " -> " << new_capacity << " (moving " << size_ << " elements) ---\n";
 
-        // перемещаем старые элементы
+        // Создаем новый массив вручную без вызова конструкторов
+        T* raw_new_data = static_cast<T*>(::operator new(new_capacity * sizeof(T)));
+        auto new_data = std::shared_ptr<T[]>(raw_new_data, [](T* ptr) { ::operator delete(ptr); });
+
+        // Перемещаем существующие элементы
         for(size_t i = 0; i < size_; ++i) {
-            new_data[i] = std::move(data[i]);  // перемещаем а не копируем
+            std::cout << "moving element [" << i << "] from old array to new array\n";
+            new (&new_data[i]) T(std::move(data[i]));  // placement new + move
+            data[i].~T();  // уничтожаем старый объект
         }
 
-        data = std::move(new_data);  // заменяем старый массив
+        data = new_data;
         capacity_ = new_capacity;
+        std::cout << "--- resize completed ---\n\n";
     }
 
 public:
     Array() = default;
 
-    // конструктор с начальной вместимостью
     explicit Array(size_t initial_capacity) {
         if (initial_capacity > 0) {
-            data = std::shared_ptr<T[]>(new T[initial_capacity]);
+            T* raw_data = static_cast<T*>(::operator new(initial_capacity * sizeof(T)));
+            data = std::shared_ptr<T[]>(raw_data, [](T* ptr) { ::operator delete(ptr); });
             capacity_ = initial_capacity;
+            std::cout << "array created with capacity: " << capacity_ << "\n";
         }
     }
 
-    // добавление в конец по константной ссылке
+    ~Array() {
+        // Явно вызываем деструкторы для всех объектов
+        for(size_t i = 0; i < size_; ++i) {
+            data[i].~T();
+        }
+    }
+
     void push_back(const T& item) {
         if(size_ >= capacity_) {
-            resize(capacity_ == 0 ? 2 : capacity_ * 2);  // увеличиваем если надо
+            resize(capacity_ == 0 ? 2 : capacity_ * 2);
         }
-        data[size_++] = item;
+        new (&data[size_]) T(item);  // placement new + copy
+        size_++;
     }
 
-    // добавление с перемещением
     void push_back(T&& item) {
         if(size_ >= capacity_) {
             resize(capacity_ == 0 ? 2 : capacity_ * 2);
         }
-        data[size_++] = std::move(item);  // перемещаем
+        new (&data[size_]) T(std::move(item));  // placement new + move
+        size_++;
     }
 
-    // удаление по индексу
     void remove(size_t index) {
         if(index >= size_) throw std::out_of_range("Index out of range");
 
-        // сдвигаем элементы
+        data[index].~T();  // уничтожаем удаляемый элемент
+
+        // Перемещаем остальные элементы
         for(size_t i = index; i < size_ - 1; ++i) {
-            data[i] = std::move(data[i + 1]);  // перемещаем при сдвиге
+            new (&data[i]) T(std::move(data[i + 1]));  // move + placement new
+            data[i + 1].~T();  // уничтожаем старый
         }
-        --size_;
+        size_--;
     }
 
-    // доступ по индексу
     T& operator[](size_t index) {
         if(index >= size_) throw std::out_of_range("Index out of range");
         return data[index];
     }
 
-    // константный доступ
     const T& operator[](size_t index) const {
         if(index >= size_) throw std::out_of_range("Index out of range");
         return data[index];
     }
 
-    // геттеры
     size_t size() const { return size_; }
     size_t capacity() const { return capacity_; }
+
+    // для проверки перемещенных элементов (только для указателей)
+    bool is_moved(size_t index) const {
+        if constexpr (std::is_pointer_v<T>) {
+            return data[index] == nullptr;
+        }
+        return false;
+    }
 };
 
 #endif
